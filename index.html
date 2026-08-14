@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Carte du réseau</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --ink:#1c1e21;
+    --sub:#5b6270;
+    --line:#e4e6ea;
+    --bg:#f7f8fa;
+    --panel:#ffffff;
+    --accent:#2f6fed;
+    --accent-soft:#eaf0fe;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+  }
+  #app{
+    display:flex;
+    height:100vh;
+    width:100vw;
+    overflow:hidden;
+  }
+  #sidebar{
+    width:340px;
+    min-width:340px;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    z-index:2;
+  }
+  #sidebar-header{
+    padding:18px 18px 12px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  #sidebar-header h1{
+    font-size:17px;
+    margin:0 0 4px 0;
+    font-weight:600;
+  }
+  #sidebar-header p{
+    margin:0;
+    font-size:12.5px;
+    color:var(--sub);
+  }
+  #search{
+    margin:12px 18px 8px 18px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:13.5px;
+    outline:none;
+    background:var(--bg);
+  }
+  #search:focus{
+    border-color:var(--accent);
+    background:var(--panel);
+  }
+  #count{
+    padding:0 18px 8px 18px;
+    font-size:12px;
+    color:var(--sub);
+  }
+  #list{
+    flex:1;
+    overflow-y:auto;
+    padding:4px 10px 18px 10px;
+  }
+  .person-card{
+    padding:10px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    margin-bottom:3px;
+    transition:background .12s ease;
+    border:1px solid transparent;
+  }
+  .person-card:hover{
+    background:var(--accent-soft);
+  }
+  .person-card.active{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+  }
+  .person-name{
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:2px;
+  }
+  .person-city{
+    font-size:12px;
+    color:var(--sub);
+    margin-bottom:4px;
+  }
+  .person-spec{
+    font-size:11.5px;
+    color:var(--sub);
+    line-height:1.4;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  #map{
+    flex:1;
+    height:100%;
+  }
+  .leaflet-popup-content-wrapper{
+    border-radius:12px;
+  }
+  .popup{
+    font-family:inherit;
+    min-width:220px;
+    max-width:280px;
+  }
+  .popup h3{
+    margin:0 0 2px 0;
+    font-size:15px;
+    font-weight:700;
+  }
+  .popup .popup-city{
+    font-size:12px;
+    color:var(--sub);
+    margin-bottom:8px;
+  }
+  .popup a.li-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12.5px;
+    font-weight:600;
+    color:#fff;
+    background:#0a66c2;
+    padding:6px 10px;
+    border-radius:7px;
+    text-decoration:none;
+    margin-bottom:9px;
+  }
+  .popup a.li-link:hover{
+    background:#084d93;
+  }
+  .popup .no-link{
+    font-size:12px;
+    color:var(--sub);
+    font-style:italic;
+    margin-bottom:9px;
+  }
+  .popup .spec-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--sub);
+    font-weight:700;
+    margin-bottom:3px;
+  }
+  .popup .spec-block{
+    font-size:12.5px;
+    line-height:1.45;
+    color:var(--ink);
+    margin-bottom:8px;
+  }
+  .popup .spec-block:last-child{
+    margin-bottom:0;
+  }
+  .popup .spec-block .tag{
+    display:inline-block;
+    font-size:10px;
+    background:var(--line);
+    color:var(--sub);
+    padding:1px 6px;
+    border-radius:5px;
+    margin-bottom:3px;
+  }
+  @media (max-width:720px){
+    #app{flex-direction:column;}
+    #sidebar{
+      width:100%;
+      min-width:0;
+      height:42%;
+      border-right:none;
+      border-bottom:1px solid var(--line);
+    }
+    #map{height:58%;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>Réseau — carte</h1>
+      <p>Cliquez sur une personne ou un point de la carte pour voir son profil LinkedIn et ses spécialités.</p>
+    </div>
+    <input id="search" type="text" placeholder="Rechercher (nom, ville, spécialité...)" />
+    <div id="count"></div>
+    <div id="list"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script>
+const people = [
+  {
+    name: "Martin Zerr",
+    city: "Lille",
+    cp: "59000",
+    lat: 50.6292, lng: 3.0573,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/martin-zerr-a4b83a169/",
+        spec: "En terme de secteurs : Publicité, IT (dev mobile et web), Communication, Vin. En terme de cible : CMO, Head of Content, DSI, CEO !" }
+    ]
+  },
+  {
+    name: "Grégory Lemanissier",
+    city: "Boulogne-Billancourt",
+    cp: "92100",
+    lat: 48.8397, lng: 2.2400,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/gr%C3%A9gorylemanissier-bdr/",
+        spec: "Tout sauf la cyber et Directrice MKT" },
+      { linkedin: "https://www.linkedin.com/in/gr%C3%A9gorylemanissier-bdr/",
+        spec: "Tout Sauf les Directrices Marketing et ESN (localisation : Boulogne / Île Maurice)" }
+    ]
+  },
+  {
+    name: "Yohann Bourbao",
+    city: "Bénodet",
+    cp: "29950",
+    lat: 47.8747, lng: -4.1147,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/yohannbourbao/",
+        spec: "B2B, Tech, Grand compte" }
+    ]
+  },
+  {
+    name: "Julie Bonnavion",
+    city: "Ozoir-la-Ferrière",
+    cp: "77330",
+    lat: 48.7758, lng: 2.6570,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/julie-bonnavion-15b7b5140",
+        spec: "Ressources Humaines, Directions Commerciales, Hôtellerie/Restauration, Direction Marketing" }
+    ]
+  },
+  {
+    name: "Julien Fravallo",
+    city: "Paris",
+    cp: "75001",
+    lat: 48.8606, lng: 2.3376,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/julien-fravallo/",
+        spec: "Cold call, consulting stratégie sales" }
+    ]
+  },
+  {
+    name: "Sofian Dauriac",
+    city: "Toulouse",
+    cp: "31000",
+    lat: 43.6047, lng: 1.4442,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/sofian-dauriac/",
+        spec: "IT, IA, digital, aéro/spatial, IRVEs, vente de formations, produits, comme presta, dev, déploiement, placement" },
+      { linkedin: "https://www.linkedin.com/in/sofian-dauriac",
+        spec: "IT, IA, BTP, IRVEs, technico-commercial, go to market" }
+    ]
+  },
+  {
+    name: "Sébastien Alargent",
+    city: "Villes-sur-Auzon",
+    cp: "84570",
+    lat: 44.0667, lng: 5.2833,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/sebastien-alargent/",
+        spec: "Industrie, Immobilier (en cours). Cible : Dir. Co, CEO, Dir. Achats, Appro." }
+    ]
+  },
+  {
+    name: "Yifsin Nouar",
+    city: "Clichy",
+    cp: "92110",
+    lat: 48.9042, lng: 2.3059,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/yifsin-nouar-businessdeveloper-prospection-qualiopi",
+        spec: "Tout sauf finance et Retail" }
+    ]
+  },
+  {
+    name: "Aziz Berraies",
+    city: "Paris",
+    cp: "75",
+    lat: 48.8566, lng: 2.3522,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/aziz-berraies-0ab4b2345/",
+        spec: "Prise de rendez-vous dans le secteur de l'éducation" }
+    ]
+  },
+  {
+    name: "Kim Becquet",
+    city: "Paris",
+    cp: "75003",
+    lat: 48.8630, lng: 2.3608,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/kimbecquet-sales",
+        spec: "Freelance SDR · Cold Calling · Outbound Sales · Lead Generation · Appointment Setting" }
+    ]
+  },
+  {
+    name: "Stellio Desnoue",
+    city: "Hanoi",
+    cp: "",
+    lat: 21.0278, lng: 105.8342,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/stelliodesnoue",
+        spec: "Secteurs de prédilection, dans l'ordre : Mode/Retail, Santé/Médical, SaaS/IA/Nouvelles technologies, Formations, Legaltech, Ressources Humaines" }
+    ]
+  },
+  {
+    name: "Zaki Taif",
+    city: "Massy",
+    cp: "91300",
+    lat: 48.7267, lng: 2.2830,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/zaki-taif",
+        spec: "Industriel, digital, numérique, services aux entreprises" }
+    ]
+  },
+  {
+    name: "Juliette Fontaine",
+    city: "Lyon",
+    cp: "69001",
+    lat: 45.7700, lng: 4.8300,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/juliette-fontaine",
+        spec: "IT, RSE, Fashion" }
+    ]
+  },
+  {
+    name: "Cindy David",
+    city: "Rennes",
+    cp: "35000",
+    lat: 48.1173, lng: -1.6778,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/cindy-david-b5a840194/",
+        spec: "Cold Calling B2B, SaaS, communication, marketing, médias, immobilier, MedTech, services B2B. Cibles : CEO, directeurs marketing, directeurs communication, directeurs commerciaux, DRH, DAF. Génération de leads, prise de rendez-vous qualifiés" }
+    ]
+  },
+  {
+    name: "Rudolph Barthelery",
+    city: "Schoelcher",
+    cp: "97233",
+    lat: 14.6042, lng: -61.0742,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/rudolphb",
+        spec: "IT, Digital et Data/IA tous secteurs confondus, pour prospecter des managers dans l'IT (head of, responsable IT, DSI, CTO, etc.)" }
+    ]
+  },
+  {
+    name: "Joseph Nataf",
+    city: "Paris",
+    cp: "75020",
+    lat: 48.8637, lng: 2.4012,
+    entries: [
+      { linkedin: "",
+        spec: "SaaS BTP, produit financier et juridique" }
+    ]
+  },
+  {
+    name: "Mélissa Maïdou",
+    city: "Livry-Gargan",
+    cp: "93190",
+    lat: 48.9126, lng: 2.5347,
+    entries: [
+      { linkedin: "",
+        spec: "Pharmacies, groupements pharmaceutiques, laboratoires, cliniques, hôpitaux, centres d'imagerie, radiologues, vétérinaires, mairies" }
+    ]
+  },
+  {
+    name: "Adrien Thevenet",
+    city: "Paris",
+    cp: "75010",
+    lat: 48.8760, lng: 2.3600,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/thevenet-adrien/",
+        spec: "Foodtech et Medtech. Sur la partie chasse : retailers, distributeurs, experts-comptables, avocats, dentistes, immobilier, CGP, courtiers..." }
+    ]
+  },
+  {
+    name: "Gaetan Loubiere",
+    city: "Marseille",
+    cp: "13012",
+    lat: 43.3010, lng: 5.4280,
+    entries: [
+      { linkedin: "https://www.linkedin.com/in/gaetan-loubiere-50a748158/",
+        spec: "IA, SaaS, iGaming" }
+    ]
+  }
+];
+
+const map = L.map('map', { zoomControl: true }).setView([46.6, 2.4], 6);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+const accent = "#2f6fed";
+const dotIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+      width:16px;height:16px;border-radius:50%;
+      background:${accent};
+      border:3px solid #fff;
+      box-shadow:0 1px 4px rgba(0,0,0,.35);
+    "></div>`,
+  iconSize: [16,16],
+  iconAnchor: [8,8],
+  popupAnchor: [0,-8]
+});
+
+function buildPopupHTML(p){
+  let linkHtml;
+  const validLink = p.entries.find(e => e.linkedin);
+  if (validLink) {
+    linkHtml = `<a class="li-link" href="${validLink.linkedin}" target="_blank" rel="noopener">Voir le profil LinkedIn ↗</a>`;
+  } else {
+    linkHtml = `<div class="no-link">Pas de profil LinkedIn renseigné</div>`;
+  }
+  const cityLine = [p.city, p.cp].filter(Boolean).join(' · ');
+  let specsHtml = '';
+  p.entries.forEach((e, i) => {
+    const tag = p.entries.length > 1 ? `<div class="tag">Entrée ${i+1}</div>` : '';
+    specsHtml += `<div class="spec-block">${tag}${e.spec}</div>`;
+  });
+  return `
+    <div class="popup">
+      <h3>${p.name}</h3>
+      <div class="popup-city">${cityLine}</div>
+      ${linkHtml}
+      <div class="spec-label">Spécialités</div>
+      ${specsHtml}
+    </div>
+  `;
+}
+
+const markers = people.map((p, idx) => {
+  const m = L.marker([p.lat, p.lng], { icon: dotIcon }).addTo(map);
+  m.bindPopup(buildPopupHTML(p));
+  m.on('click', () => setActive(idx));
+  return m;
+});
+
+const listEl = document.getElementById('list');
+const countEl = document.getElementById('count');
+const searchEl = document.getElementById('search');
+let cards = [];
+
+function render(filterText){
+  listEl.innerHTML = '';
+  cards = [];
+  const f = (filterText || '').toLowerCase().trim();
+  let shown = 0;
+  people.forEach((p, idx) => {
+    const haystack = [
+      p.name, p.city, p.cp,
+      ...p.entries.map(e => e.spec)
+    ].join(' ').toLowerCase();
+    if (f && !haystack.includes(f)) return;
+    shown++;
+    const card = document.createElement('div');
+    card.className = 'person-card';
+    card.dataset.idx = idx;
+    const cityLine = [p.city, p.cp].filter(Boolean).join(' · ');
+    card.innerHTML = `
+      <div class="person-name">${p.name}</div>
+      <div class="person-city">${cityLine}</div>
+      <div class="person-spec">${p.entries.map(e => e.spec).join(' / ')}</div>
+    `;
+    card.addEventListener('click', () => {
+      setActive(idx);
+      map.flyTo([p.lat, p.lng], 11, { duration: 0.6 });
+      markers[idx].openPopup();
+    });
+    listEl.appendChild(card);
+    cards.push(card);
+  });
+  countEl.textContent = shown + (shown > 1 ? ' personnes' : ' personne');
+}
+
+function setActive(idx){
+  cards.forEach(c => c.classList.toggle('active', Number(c.dataset.idx) === idx));
+  const el = cards.find(c => Number(c.dataset.idx) === idx);
+  if (el) el.scrollIntoView({ block: 'nearest' });
+}
+
+searchEl.addEventListener('input', (e) => render(e.target.value));
+
+render('');
+
+// Fit map to all markers on load
+const group = L.featureGroup(markers);
+map.fitBounds(group.getBounds().pad(0.2));
+</script>
+</body>
+</html>
