@@ -206,10 +206,15 @@
 <body>
 <svg width="0" height="0" style="position:absolute">
   <filter id="violetize" color-interpolation-filters="sRGB">
+    <feComponentTransfer>
+      <feFuncR type="linear" slope="4.541" intercept="-3.085"/>
+      <feFuncG type="linear" slope="4.541" intercept="-3.085"/>
+      <feFuncB type="linear" slope="4.541" intercept="-3.085"/>
+    </feComponentTransfer>
     <feColorMatrix type="matrix" values="
-      0.259500 0.510350 0.095150 0 0.084980
-      0.259500 0.510350 0.095150 0 -0.087569
-      0.259500 0.510350 0.095150 0 0.237922
+      0.300 0.590 0.110 0 0.084980
+      0.300 0.590 0.110 0 -0.087569
+      0.300 0.590 0.110 0 0.237922
       0 0 0 1 0
     "/>
   </filter>
