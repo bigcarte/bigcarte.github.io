@@ -119,6 +119,18 @@
   #map{
     flex:1;
     height:100%;
+    position:relative;
+  }
+  #map .leaflet-tile-pane{
+    filter:brightness(0.865);
+  }
+  #map-tint{
+    position:absolute;
+    inset:0;
+    background:#d8acff;
+    mix-blend-mode:color;
+    pointer-events:none;
+    z-index:350;
   }
   .leaflet-popup-content-wrapper{
     border-radius:12px;
@@ -419,6 +431,10 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd',
   maxZoom: 19
 }).addTo(map);
+
+const mapTint = document.createElement('div');
+mapTint.id = 'map-tint';
+map.getContainer().appendChild(mapTint);
 
 const accent = "#2f6fed";
 const dotIcon = L.divIcon({
