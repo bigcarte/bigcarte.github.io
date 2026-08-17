@@ -122,15 +122,7 @@
     position:relative;
   }
   #map .leaflet-tile-pane{
-    filter:brightness(0.865);
-  }
-  #map-tint{
-    position:absolute;
-    inset:0;
-    background:#d8acff;
-    mix-blend-mode:color;
-    pointer-events:none;
-    z-index:350;
+    filter:url(#violetize);
   }
   .leaflet-popup-content-wrapper{
     border-radius:12px;
@@ -212,6 +204,16 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute">
+  <filter id="violetize" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="
+      0.259500 0.510350 0.095150 0 0.084980
+      0.259500 0.510350 0.095150 0 -0.087569
+      0.259500 0.510350 0.095150 0 0.237922
+      0 0 0 1 0
+    "/>
+  </filter>
+</svg>
 <div id="app">
   <div id="sidebar">
     <div id="sidebar-header">
@@ -431,10 +433,6 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd',
   maxZoom: 19
 }).addTo(map);
-
-const mapTint = document.createElement('div');
-mapTint.id = 'map-tint';
-map.getContainer().appendChild(mapTint);
 
 const accent = "#2f6fed";
 const dotIcon = L.divIcon({
