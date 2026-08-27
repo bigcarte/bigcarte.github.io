@@ -121,7 +121,7 @@
     height:100%;
     position:relative;
   }
-  #map .leaflet-tile-pane{
+  #map .leaflet-base-pane{
     filter:url(#violetize);
   }
   .leaflet-popup-content-wrapper{
@@ -207,14 +207,14 @@
 <svg width="0" height="0" style="position:absolute">
   <filter id="violetize" color-interpolation-filters="sRGB">
     <feComponentTransfer>
-      <feFuncR type="linear" slope="4.541" intercept="-3.085"/>
-      <feFuncG type="linear" slope="4.541" intercept="-3.085"/>
-      <feFuncB type="linear" slope="4.541" intercept="-3.085"/>
+      <feFuncR type="linear" slope="4.301766" intercept="-2.831851"/>
+      <feFuncG type="linear" slope="4.301766" intercept="-2.831851"/>
+      <feFuncB type="linear" slope="4.301766" intercept="-2.831851"/>
     </feComponentTransfer>
     <feColorMatrix type="matrix" values="
-      0.300 0.590 0.110 0 0.084980
-      0.300 0.590 0.110 0 -0.087569
-      0.300 0.590 0.110 0 0.237922
+      0.300 0.590 0.110 0 0.172549
+      0.300 0.590 0.110 0 0.000000
+      0.300 0.590 0.110 0 0.325490
       0 0 0 1 0
     "/>
   </filter>
@@ -473,9 +473,21 @@ const people = [
 
 const map = L.map('map', { zoomControl: true }).setView([46.6, 2.4], 6);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-  subdomains: 'abcd',
+// Pane dédiée au fond de carte, pour que le filtre violet ne s'applique
+// qu'au fond (pas aux libellés, ajoutés séparément par-dessus).
+map.createPane('base');
+map.getPane('base').style.zIndex = 200;
+
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+  pane: 'base',
+  maxNativeZoom: 16,
+  maxZoom: 19
+}).addTo(map);
+
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Esri',
+  maxNativeZoom: 16,
   maxZoom: 19
 }).addTo(map);
 
